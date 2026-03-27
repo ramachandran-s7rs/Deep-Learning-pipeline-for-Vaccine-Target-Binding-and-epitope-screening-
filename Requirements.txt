@@ -1,0 +1,7 @@
+rdkit
+PyTDC
+subword-nmt
+lifelines
+pandas-flavor
+scikit-learn==1.2.2
+wget
