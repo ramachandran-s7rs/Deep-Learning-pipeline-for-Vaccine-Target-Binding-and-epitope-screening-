@@ -1,0 +1,90 @@
+import pandas as pd
+import math
+import warnings
+from DeepPurpose import DTI as models
+from DeepPurpose import utils
+
+warnings.filterwarnings("ignore")
+
+# Add VACCINE SEQUENCES ---
+
+raw_vaccine = "AKFVAAWTLKAAAEAAAKMQSQIVSFYFAAYFYFKLFKNFKAAYELASEMMAYYAAYRQAASVVVAMAAYVYLEYLQNRFAAYMQSQIVSFYFAAYLASEMMAYYAAYQAASVVVAMAAYTTNASLLTKAAYVYLEYLQNRFAAYMSTKVLIQFAAYVSFYFKLFKGPGPGQSQIVSFYFKLFKNFGPGPGVSFYFKLFKNFKDDQGPGPGSFYFKLFKNFKDDQSGPGPGQIVSFYFKLFKNFKDGPGPGTFFPFIFEEEPIFFDGPGPGFFPFIFEEEPIFFDTGPGPGKLEFESAQFPNWYISGPGPGGLLEFEVYLEYLQNRGPGPGLLEFEVYLEYLQNRFKKKYFNAGHSDVADNGTKKPIFFDTWDNEAYVHDAPVRSKKHNRNTNTNPKRSSDYYNRSTSKKAKTGKRKRSQMLFRGRRKKKDDQSIQKSVETKKAKTGKRKRSQMLFRGRRKKSVDPKNYPKKKKKQNRFESSEEQKKMKIEEGKLVIWINGDKGYNGLAEVGKKFEKDTGIKVTVEHPDKLEEKFPQVAATGDGPDIIFWAHDRFGGYAQSGLLAEITPDKAFQDKLYPFTWDAVRYEAAAKHHHHHH"
+
+# ADD TARGET SEQUENCE
+raw_target = "GVYDGREHTVMIQRTPKIQVYSRHPAENGKSNFLNCYVSGFHPSDIEVDLLKNGERIEKVEHSDLSFSKDWSFYLLYYTEFTPTEKDEYACRVNHVTLSQPKIVKWDRDMGSHSMRYFFTSVSRPGRGEPRFIAVGYVDDTQFVRFDSDAASQRMEPRAPWIEQEGPEYWDGETRKVKAHSQTHRVDLGTLRGYYNQSEAGSHTVQRMYGCDVGSDWRFLRGYHQYAYDGKDYIALKEDLRSWTAADMAAQTTKHKWEAAHVAEQLRAYLEGTCVEWLRRYLENGKETLQRTDAPKTHMTHHAVSDHEATLRCWALSFYPAEITLTWQRDGEDQTQDTELVETRPAGDGTFQKWAAVVVPSGQEQRYTCHVQHEGLPKPLTLRWE"
+
+# Clean the sequences
+vaccine_seq_clean = raw_vaccine.strip().replace("\n", "").replace(" ", "")
+target_seq_clean = raw_target.strip().replace("\n", "").replace(" ", "")
+
+# --- 2. LOAD PRE-TRAINED MODEL ---
+# Using CNN_CNN for Protein-Protein Interaction
+model = models.model_pretrained(model = 'CNN_CNN_BindingDB')
+
+# --- 3. FULL VACCINE PREDICTION ---
+print("Running prediction for full vaccine construct...")
+X_pred = utils.data_process_repurpose_virtual_screening(
+    [vaccine_seq_clean], 
+    [target_seq_clean], 
+    'CNN', 'CNN', 
+    'repurposing'
+)
+y_pred = model.predict(X_pred)
+pkd = y_pred[0]
+
+# Calculate Metrics
+kd_molar = 10**(-pkd)
+R = 1.9872e-3  # Gas constant kcal/(mol·K)
+T = 310        # Body temp in Kelvin
+delta_g = R * T * math.log(kd_molar)
+ic50_nm = kd_molar * 1e9 
+
+print("-" * 30)
+print(f"FULL VACCINE RESULTS:")
+print(f"pKd (-log10 Kd): {pkd:.4f}")
+print(f"Delta G: {delta_g:.2f} kcal/mol")
+print(f"Estimated IC50: {ic50_nm:.2f} nM")
+print("-" * 30)
+
+# --- 4. EPITOPE SCREENING (SLIDING WINDOW) ---
+print("\nStarting Epitope Screening Scan...")
+window_size = 30 
+step_size = 15   
+results_list = []
+
+for i in range(0, len(vaccine_seq_clean) - window_size + 1, step_size):
+    chunk = vaccine_seq_clean[i:i+window_size]
+    
+    # Process chunk
+    X_chunk = utils.data_process_repurpose_virtual_screening(
+        [chunk], 
+        [target_seq_clean], 
+        'CNN', 'CNN', 
+        'repurposing'
+    )
+    
+    y_chunk = model.predict(X_chunk)
+    chunk_pkd = y_chunk[0]
+    
+    # Thermodynamic calcs for chunk
+    chunk_kd = 10**(-chunk_pkd)
+    chunk_dg = R * T * math.log(chunk_kd)
+    
+    results_list.append({
+        'Position': f"{i}-{i+window_size}",
+        'Sequence': chunk,
+        'pKd': round(chunk_pkd, 4),
+        'Kd_nM': round(chunk_kd * 1e9, 2),
+        'DeltaG': round(chunk_dg, 2)
+    })
+
+# --- 5. FINAL ANALYSIS ---
+df = pd.DataFrame(results_list)
+top_5 = df.sort_values(by='pKd', ascending=False).head(5)
+
+print("\n" + "="*50)
+print("TOP 5 BINDING REGIONS (EPITOPES) FOUND")
+print("="*50)
+print(top_5[['Position', 'pKd', 'Kd_nM', 'DeltaG']])
+print("\n" + "="*50)
+print(f"Lead Epitope Sequence: {top_5.iloc[0]['Sequence']}")
