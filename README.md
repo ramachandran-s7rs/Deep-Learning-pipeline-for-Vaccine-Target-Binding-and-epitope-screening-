@@ -30,5 +30,10 @@ pip install rdkit PyTDC subword-nmt lifelines pandas-flavor wget
 pip install git+[https://github.com/bp-kelley/descriptastorus](https://github.com/bp-kelley/descriptastorus)
 pip install scikit-learn==1.2.2
 
+
+
+DeepPurpose: Huang, K., Fu, T., Glass, L. M., Zitnik, M., & Sun, J. (2020). DeepPurpose: a deep learning library for drug-target interaction prediction. Bioinformatics, 36(17), 4606-4614.
+
+BindingDB: Gilson, M. K., et al. (2016). BindingDB in 2015: A public database for protein-ligand binding affinities, predictive modeling and drug design. Nucleic Acids Research, 44(D1), D1045-D1053.
 # Install DeepPurpose Framework
 pip install git+[https://github.com/kexinhuang12345/DeepPurpose.git](https://github.com/kexinhuang12345/DeepPurpose.git) --no-deps
