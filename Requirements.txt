@@ -1,7 +1,12 @@
-rdkit
-PyTDC
-subword-nmt
-lifelines
-pandas-flavor
-scikit-learn==1.2.2
-wget
+# 1. Install the modern version of rdkit first
+!pip install rdkit
+
+# 2. Install all other necessary pieces
+!pip install PyTDC subword-nmt lifelines pandas-flavor wget scikit-learn==1.2.2
+
+# 3. Install DeepPurpose but tell it to IGNORE its broken dependency list 
+# (This prevents it from searching for 'rdkit-pypi')
+!pip install git+https://github.com/kexinhuang12345/DeepPurpose.git --no-deps
+
+# 4. Install the descriptor tool
+!pip install git+https://github.com/bp-kelley/descriptastorus
